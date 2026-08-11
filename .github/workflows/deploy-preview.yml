@@ -49,7 +49,7 @@ jobs:
 
       - name: Deploy preview
         run: |
-          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}")"
+          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --target=preview --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}")"
           echo "### Preview deployment" >> "${GITHUB_STEP_SUMMARY}"
           echo "- URL: ${deployment_url}" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Commit: ${{ github.event.pull_request.head.sha }}" >> "${GITHUB_STEP_SUMMARY}"
