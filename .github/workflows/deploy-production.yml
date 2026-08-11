@@ -151,14 +151,14 @@ jobs:
         run: npm ci
 
       - name: Pull Vercel production settings
-        run: npx --yes vercel@58.9.0 pull --yes --environment=production --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 pull --yes --environment=production --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
 
       - name: Build frontend deployment
-        run: npx --yes vercel@58.9.0 build --prod --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 build --prod --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
 
       - name: Deploy frontend to Vercel
         run: |
-          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --prod --token="${VERCEL_TOKEN}")"
+          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --prod --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}")"
           echo "VERCEL_DEPLOYMENT_URL=${deployment_url}" >> "${GITHUB_ENV}"
           echo "### Production release" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Commit: ${RELEASE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
