@@ -23,6 +23,7 @@ jobs:
     environment:
       name: preview
     env:
+      VERCEL_SCOPE: simon-project2
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -41,14 +42,14 @@ jobs:
       - run: npm run test:frontend
 
       - name: Pull Vercel preview settings
-        run: npx --yes vercel@58.9.0 pull --yes --environment=preview --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 pull --yes --environment=preview --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Build preview
-        run: npx --yes vercel@58.9.0 build --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 build --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Deploy preview
         run: |
-          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}")"
+          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}")"
           echo "### Preview deployment" >> "${GITHUB_STEP_SUMMARY}"
           echo "- URL: ${deployment_url}" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Commit: ${{ github.event.pull_request.head.sha }}" >> "${GITHUB_STEP_SUMMARY}"

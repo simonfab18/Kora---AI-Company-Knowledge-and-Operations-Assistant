@@ -40,6 +40,7 @@ jobs:
       GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
       GCP_WORKER_VM: ${{ vars.GCP_WORKER_VM }}
       GCP_WORKER_ZONE: ${{ vars.GCP_WORKER_ZONE }}
+      VERCEL_SCOPE: simon-project2
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -89,7 +90,7 @@ jobs:
           node-version: 22
 
       - name: Restore frontend deployment
-        run: npx --yes vercel@58.9.0 promote "${ROLLBACK_VERCEL_URL}" --yes --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 promote "${ROLLBACK_VERCEL_URL}" --yes --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Record rollback
         run: |
