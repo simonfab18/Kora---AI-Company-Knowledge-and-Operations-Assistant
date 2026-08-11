@@ -16,7 +16,7 @@ jobs:
       NEXT_INTERNAL_BASE_URL: ${{ secrets.NEXT_INTERNAL_BASE_URL || 'http://localhost:3000' }}
       KORA_INTERNAL_WORKER_SECRET: ${{ secrets.KORA_INTERNAL_WORKER_SECRET || 'ci-worker-secret' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
-      NOTION_TOKEN_ENCRYPTION_KEY: ${{ secrets.NOTION_TOKEN_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
+      NOTION_TOKEN_ENCRYPTION_KEY: ${{ secrets.NOTION_TOKEN_ENCRYPTION_KEY || 'ci-notion-encryption-key-placeholder' }}
       NOTION_CLIENT_ID: ${{ secrets.NOTION_CLIENT_ID || 'ci-notion-client-id' }}
       NOTION_CLIENT_SECRET: ${{ secrets.NOTION_CLIENT_SECRET || 'ci-notion-client-secret' }}
       NOTION_REDIRECT_URI: ${{ secrets.NOTION_REDIRECT_URI || 'http://localhost:3000/api/notion/callback' }}
