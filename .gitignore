@@ -1,0 +1,57 @@
+# Dependencies and build output
+node_modules/
+.next/
+.next-dev/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+
+# Python environments, caches, and test artifacts
+.venv/
+venv/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.py[cod]
+backend/pytest-cache-files-*/
+
+# Runtime files
+*.log
+logs/
+celerybeat-schedule
+celerybeat.pid
+*.sqlite
+*.sqlite3
+
+# Local tooling and editors
+.superdesign/
+.superdesign/tmp/
+.turbo/
+.vercel/
+.vscode/
+.idea/
+docs/.obsidian/
+*.swp
+*.swo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary Google Cloud credentials created by GitHub Actions
+gha-creds-*.json
+deploy/worker/worker.env
+
+# Supabase local CLI metadata
+supabase/.temp/
