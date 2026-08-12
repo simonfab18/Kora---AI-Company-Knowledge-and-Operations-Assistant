@@ -59,13 +59,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:migration:safety
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
       - name: Optional Supabase advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_DB_PASSWORD" ]; then
-            npx supabase db advisors --project-ref gcunbxduzixilquodcow
+            supabase link --project-ref gcunbxduzixilquodcow --password "$SUPABASE_DB_PASSWORD"
+            supabase db advisors --linked --fail-on none
           else
             echo "Skipping live Supabase advisors because CI secrets are not configured."
           fi
