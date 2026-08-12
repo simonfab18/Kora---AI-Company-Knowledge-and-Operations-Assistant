@@ -18,20 +18,18 @@ flowchart LR
 
     API --> DB[(Supabase PostgreSQL)]
     DB --> Vector[pgvector]
-    API --> Redis[(Redis)]
     API --> Secrets[Google Secret Manager]
     API --> AI[OpenAI or Gemini API]
     API --> Notion[Notion API]
 
     Scheduler[Google Cloud Scheduler] --> API
-    Worker[Celery Worker on Google Compute Engine] --> Redis
-    Worker --> DB
-    Worker --> Notion
-    Worker --> AI
-    Worker --> Secrets
+    Tasks[Google Cloud Tasks] --> NextInternal[Next.js Internal Sync Handler]
+    NextInternal --> DB
+    NextInternal --> Notion
+    NextInternal --> AI
 
     API --> Logs[Google Cloud Logging]
-    Worker --> Logs
+    NextInternal --> Logs
 ```
 
 ## 11.2 Deployment decision
@@ -55,39 +53,23 @@ flowchart LR
 - Minimum instances can remain zero for a low-traffic portfolio app
 - CORS restricted to approved Vercel domains and localhost in development
 
-### Celery worker
+### Background work
 
-For the portfolio deployment, use a small Google Compute Engine VM running the Celery worker through Docker Compose.
+For the free-first portfolio deployment, use Google Cloud Tasks to dispatch sync work to a protected internal Next.js route. This avoids a 24/7 VM while preserving durable job rows in Supabase.
 
 Reasons:
 
-- A Celery worker is a continuous process.
-- It must continuously consume tasks from Redis.
-- It should not depend on an HTTP request remaining open.
-- It is simpler to demonstrate than forcing a long-running worker into a request-driven service.
-
-Recommended initial VM layout:
-
-```text
-Google Compute Engine VM
-├── celery-worker container
-└── redis container
-```
-
-Portfolio trade-off:
-
-- This is inexpensive and simple.
-- It has a single point of failure.
-- Redis and the worker share a machine.
-- It is acceptable for a demonstration but not the final enterprise topology.
+- Cloud Tasks is request-driven and can remain near zero cost for low traffic.
+- Cloud Run can scale the API to zero.
+- Sync job state remains durable in Supabase.
+- The queue payload carries identifiers only, not tokens or document content.
 
 Production upgrade path:
 
-- Managed Redis or a dedicated Redis service
-- Multiple Celery workers
-- Separate worker and broker infrastructure
-- Autoscaling or queue-specific workers
-- Dead-letter and monitoring improvements
+- Dedicated Cloud Run task handler service
+- Dead-letter queues
+- Managed workflow orchestration
+- Queue-specific concurrency controls
 
 ### Scheduled jobs
 
@@ -95,7 +77,7 @@ Google Cloud Scheduler sends an authenticated request to:
 
 - `POST /v1/internal/schedules/notion-sync`
 
-The API identifies due organizations and enqueues Celery tasks.
+The API identifies due organizations and enqueues Cloud Tasks.
 
 ### Secrets
 
@@ -106,7 +88,6 @@ Store infrastructure secrets in Google Secret Manager:
 - Token encryption key
 - OpenAI API key
 - Gemini API key
-- Redis password
 - Internal scheduler secret when OIDC is not used
 
 Do not put secrets in the repository, client bundle, screenshots, or documentation examples.
@@ -156,7 +137,7 @@ Responsible for:
 - Structured errors
 - Audit events
 
-### Celery worker
+### Background task handler
 
 Responsible for:
 
@@ -171,24 +152,11 @@ Responsible for:
 - Knowledge-gap grouping
 - Retriable, idempotent background work
 
-### Redis
+### Upstash Redis
 
-Responsible for:
+Responsible for frontend/serverless short-lived rate-limit counters and cache entries when configured.
 
-- Celery message broker
-- Celery result backend only when useful
-- Short-lived distributed locks
-- Short-lived rate-limit counters
-- Short-lived cache entries
-
-Redis is not the source of truth for:
-
-- Job status
-- User permissions
-- Documents
-- Conversations
-- Knowledge gaps
-- Billing or usage records
+Redis is not the source of truth for durable product data.
 
 ### Supabase PostgreSQL
 

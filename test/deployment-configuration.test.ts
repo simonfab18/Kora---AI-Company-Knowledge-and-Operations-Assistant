@@ -9,8 +9,6 @@ const productionWorkflow = read(".github/workflows/deploy-production.yml");
 const previewWorkflow = read(".github/workflows/deploy-preview.yml");
 const migrationWorkflow = read(".github/workflows/database-migrate.yml");
 const rollbackWorkflow = read(".github/workflows/rollback-production.yml");
-const workerCompose = read("deploy/worker/docker-compose.yml");
-const workerDeploy = read("deploy/worker/deploy.sh");
 const dockerfile = read("backend/Dockerfile");
 
 function expectNoCredentialValues(content: string) {
@@ -35,11 +33,13 @@ describe("production deployment configuration", () => {
     expect(productionWorkflow).not.toContain("credentials_json");
   });
 
-  it("checks Cloud Run readiness and waits for worker health", () => {
+  it("checks Cloud Run readiness and configures Cloud Tasks", () => {
     expect(productionWorkflow).toContain("--startup-probe=");
     expect(productionWorkflow).toContain("--liveness-probe=");
     expect(productionWorkflow).toContain(".status == \"ready\"");
-    expect(workerDeploy).toContain("--wait --wait-timeout 120");
+    expect(productionWorkflow).toContain("Ensure Cloud Tasks queue");
+    expect(productionWorkflow).toContain("BACKGROUND_TASK_BACKEND=cloud_tasks");
+    expect(productionWorkflow).toContain("CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL");
   });
 
   it("keeps preview credentials away from fork pull requests", () => {
@@ -66,15 +66,14 @@ describe("production deployment configuration", () => {
     expect(dockerfile).not.toContain(".[dev]");
   });
 
-  it("protects and persists the production Redis broker", () => {
-    expect(workerCompose).toContain("--requirepass");
-    expect(workerCompose).toContain("redis-data:/data");
-    expect(workerCompose).toContain("restart: unless-stopped");
-    expect(workerCompose).not.toContain(".env.local");
+  it("does not deploy an always-on worker VM or Redis broker", () => {
+    expect(productionWorkflow).not.toContain("GCP_WORKER_VM");
+    expect(productionWorkflow).not.toContain("celery");
+    expect(productionWorkflow).not.toContain("REDIS_URL");
   });
 
   it("contains no committed credential values", () => {
-    for (const content of [productionWorkflow, previewWorkflow, migrationWorkflow, rollbackWorkflow, workerCompose]) {
+    for (const content of [productionWorkflow, previewWorkflow, migrationWorkflow, rollbackWorkflow]) {
       expectNoCredentialValues(content);
     }
   });

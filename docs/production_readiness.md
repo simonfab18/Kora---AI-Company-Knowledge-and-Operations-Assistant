@@ -30,10 +30,12 @@ Backend services:
 
 - `DATABASE_URL`
 - `SUPABASE_JWT_SECRET`
-- `REDIS_URL`
-- `CELERY_BROKER_URL`
-- `CELERY_RESULT_BACKEND`
 - `API_CORS_ORIGINS`
+- `BACKGROUND_TASK_BACKEND`
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `CLOUD_TASKS_QUEUE`
+- `CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL`
 
 Production-only values:
 
@@ -77,6 +79,8 @@ Implemented in the app:
 - Supabase admin client now reports the exact missing server environment setting.
 
 The daily AI quota uses saved `usage_events`, so it survives page refreshes and app restarts. Distributed burst limits and organization summary caches use Upstash Redis when its REST URL and token are configured. Development can fall back to process memory, but production readiness reports a warning until distributed Redis is available.
+
+Background sync uses Google Cloud Tasks in production and a local background fallback in development. No production Compute Engine worker VM is required for the free-first deployment.
 
 ## Smoke Test Before Launch
 

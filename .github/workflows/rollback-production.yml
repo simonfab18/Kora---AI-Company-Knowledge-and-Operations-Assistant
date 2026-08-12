@@ -38,8 +38,6 @@ jobs:
       GCP_REGION: ${{ vars.GCP_REGION }}
       GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
       GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
-      GCP_WORKER_VM: ${{ vars.GCP_WORKER_VM }}
-      GCP_WORKER_ZONE: ${{ vars.GCP_WORKER_ZONE }}
       VERCEL_SCOPE: simon-project2
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -73,16 +71,11 @@ jobs:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           version: ">= 495.0.0"
 
-      - name: Restore backend API and worker
+      - name: Restore backend API
         run: |
           image_uri="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/kora-backend:${ROLLBACK_IMAGE_TAG}"
           gcloud artifacts docker images describe "${image_uri}" --quiet
           gcloud run services update "${GCP_CLOUD_RUN_SERVICE}" --region="${GCP_REGION}" --image="${image_uri}" --quiet
-          gcloud compute ssh "${GCP_WORKER_VM}" \
-            --project="${GCP_PROJECT_ID}" \
-            --zone="${GCP_WORKER_ZONE}" \
-            --tunnel-through-iap \
-            --command="sudo bash /opt/kora/deploy.sh '${image_uri}'"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

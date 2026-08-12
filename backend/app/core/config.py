@@ -25,14 +25,15 @@ class Settings(BaseSettings):
     supabase_publishable_key: str | None = None
     supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
-    redis_url: str = "redis://localhost:6379/0"
-    celery_broker_url: str | None = None
-    celery_result_backend: str | None = None
-    celery_task_always_eager: bool = False
     next_internal_base_url: str = "http://localhost:3000"
     kora_internal_worker_secret: str | None = None
     sentry_dsn: str | None = None
     sync_worker_http_timeout_seconds: float = 30.0
+    background_task_backend: Literal["local", "cloud_tasks"] = "local"
+    gcp_project_id: str | None = None
+    gcp_region: str | None = None
+    cloud_tasks_queue: str | None = None
+    cloud_tasks_service_account_email: str | None = None
 
     @field_validator("api_cors_origins", mode="before")
     @classmethod
@@ -42,14 +43,6 @@ class Settings(BaseSettings):
         if isinstance(value, list):
             return [str(origin) for origin in value]
         return ["http://localhost:3000"]
-
-    @property
-    def broker_url(self) -> str:
-        return self.celery_broker_url or self.redis_url
-
-    @property
-    def result_backend(self) -> str:
-        return self.celery_result_backend or self.redis_url
 
 
 @lru_cache(maxsize=1)

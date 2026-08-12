@@ -33,10 +33,8 @@ jobs:
       GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
       GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
       GCP_CLOUD_RUN_SERVICE_ACCOUNT: ${{ vars.GCP_CLOUD_RUN_SERVICE_ACCOUNT }}
-      GCP_VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
-      GCP_VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
-      GCP_WORKER_VM: ${{ vars.GCP_WORKER_VM }}
-      GCP_WORKER_ZONE: ${{ vars.GCP_WORKER_ZONE }}
+      CLOUD_TASKS_QUEUE: ${{ vars.CLOUD_TASKS_QUEUE }}
+      CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL: ${{ vars.CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL }}
       PRODUCTION_SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
       VERCEL_SCOPE: simon-project2
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -58,7 +56,7 @@ jobs:
           required=(
             GCP_PROJECT_ID GCP_REGION GCP_ARTIFACT_REPOSITORY
             GCP_CLOUD_RUN_SERVICE GCP_CLOUD_RUN_SERVICE_ACCOUNT
-            GCP_VPC_NETWORK GCP_VPC_SUBNET GCP_WORKER_VM GCP_WORKER_ZONE
+            CLOUD_TASKS_QUEUE CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL
             PRODUCTION_SITE_URL GCP_WORKLOAD_IDENTITY_PROVIDER
             GCP_DEPLOY_SERVICE_ACCOUNT VERCEL_TOKEN VERCEL_ORG_ID
             VERCEL_PROJECT_ID RELEASE_SHA
@@ -91,6 +89,19 @@ jobs:
           docker push "${image_uri}"
           echo "KORA_BACKEND_IMAGE=${image_uri}" >> "${GITHUB_ENV}"
 
+      - name: Ensure Cloud Tasks queue
+        run: |
+          if ! gcloud tasks queues describe "${CLOUD_TASKS_QUEUE}" --project="${GCP_PROJECT_ID}" --location="${GCP_REGION}" >/dev/null 2>&1; then
+            gcloud tasks queues create "${CLOUD_TASKS_QUEUE}" \
+              --project="${GCP_PROJECT_ID}" \
+              --location="${GCP_REGION}" \
+              --max-dispatches-per-second=1 \
+              --max-concurrent-dispatches=2 \
+              --max-attempts=3 \
+              --min-backoff=10s \
+              --max-backoff=300s
+          fi
+
       - name: Deploy API to Cloud Run
         run: |
           gcloud run deploy "${GCP_CLOUD_RUN_SERVICE}" \
@@ -109,11 +120,8 @@ jobs:
             --timeout=60 \
             --min=0 \
             --max=3 \
-            --network="${GCP_VPC_NETWORK}" \
-            --subnet="${GCP_VPC_SUBNET}" \
-            --vpc-egress=private-ranges-only \
-            --set-env-vars="APP_ENV=production,LOG_LEVEL=INFO,API_CORS_ORIGINS=${PRODUCTION_SITE_URL},NEXT_INTERNAL_BASE_URL=${PRODUCTION_SITE_URL}" \
-            --set-secrets="DATABASE_URL=kora-database-url:latest,SUPABASE_URL=kora-supabase-url:latest,SUPABASE_PUBLISHABLE_KEY=kora-supabase-publishable-key:latest,SUPABASE_SERVICE_ROLE_KEY=kora-supabase-service-role-key:latest,SUPABASE_JWT_SECRET=kora-supabase-jwt-secret:latest,REDIS_URL=kora-redis-url:latest,CELERY_BROKER_URL=kora-redis-url:latest,CELERY_RESULT_BACKEND=kora-redis-result-url:latest,KORA_INTERNAL_WORKER_SECRET=kora-internal-worker-secret:latest" \
+            --set-env-vars="APP_ENV=production,LOG_LEVEL=INFO,API_CORS_ORIGINS=${PRODUCTION_SITE_URL},NEXT_INTERNAL_BASE_URL=${PRODUCTION_SITE_URL},BACKGROUND_TASK_BACKEND=cloud_tasks,GCP_PROJECT_ID=${GCP_PROJECT_ID},GCP_REGION=${GCP_REGION},CLOUD_TASKS_QUEUE=${CLOUD_TASKS_QUEUE},CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL=${CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL}" \
+            --set-secrets="DATABASE_URL=kora-database-url:latest,SUPABASE_URL=kora-supabase-url:latest,SUPABASE_PUBLISHABLE_KEY=kora-supabase-publishable-key:latest,SUPABASE_SERVICE_ROLE_KEY=kora-supabase-service-role-key:latest,SUPABASE_JWT_SECRET=kora-supabase-jwt-secret:latest,KORA_INTERNAL_WORKER_SECRET=kora-internal-worker-secret:latest" \
             --quiet
 
           api_url="$(gcloud run services describe "${GCP_CLOUD_RUN_SERVICE}" --region="${GCP_REGION}" --format='value(status.url)')"
@@ -125,22 +133,6 @@ jobs:
           ready_json="$(curl --fail --silent --show-error --retry 8 --retry-delay 5 "${KORA_API_URL}/ready")"
           jq -e '.status == "ok"' <<< "${health_json}" > /dev/null
           jq -e '.status == "ready"' <<< "${ready_json}" > /dev/null
-
-      - name: Update worker VM
-        run: |
-          gcloud compute scp \
-            --project="${GCP_PROJECT_ID}" \
-            --zone="${GCP_WORKER_ZONE}" \
-            --tunnel-through-iap \
-            deploy/worker/docker-compose.yml \
-            deploy/worker/deploy.sh \
-            "${GCP_WORKER_VM}:/tmp/"
-
-          gcloud compute ssh "${GCP_WORKER_VM}" \
-            --project="${GCP_PROJECT_ID}" \
-            --zone="${GCP_WORKER_ZONE}" \
-            --tunnel-through-iap \
-            --command="sudo mkdir -p /opt/kora && sudo cp /tmp/docker-compose.yml /opt/kora/docker-compose.yml && sudo cp /tmp/deploy.sh /opt/kora/deploy.sh && sudo bash /opt/kora/deploy.sh '${KORA_BACKEND_IMAGE}'"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

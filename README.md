@@ -11,9 +11,9 @@ Milestone 1 provides the local development foundation:
 - Next.js App Router frontend
 - FastAPI backend
 - `/health` and `/ready` endpoints
-- Celery worker
-- Redis broker wiring
-- Docker Compose for API, worker, and Redis
+- Local background sync fallback
+- Cloud Tasks-compatible queue adapter
+- Docker Compose for the API
 - Supabase/PostgreSQL configuration placeholders
 - Frontend and backend quality checks
 - GitHub Actions baseline
@@ -120,7 +120,7 @@ Before testing Milestone 11/12 against the hosted Supabase project, run `supabas
 
 - Node.js 22+
 - Python 3.13+
-- Docker Desktop for Redis/API/worker local infrastructure
+- Docker Desktop for optional local API infrastructure
 
 ## Environment
 
@@ -140,7 +140,7 @@ For Milestone 10 chat, the default organization setting uses Gemini `gemini-flas
 
 For Gemini retrieval tuning, run `supabase/migrations/20260719073000_tune_gemini_retrieval_threshold.sql` if Ask AI returns insufficient context even though `document_chunks` contains relevant synced content.
 
-For production readiness, review `docs/production_readiness.md`. For the gated Vercel, Cloud Run, worker VM, database migration, and rollback workflows, follow `docs/deployment.md`. Ask AI daily quotas default to `KORA_DAILY_USER_AI_QUESTION_LIMIT=20` and `KORA_DAILY_GLOBAL_AI_QUESTION_LIMIT=100`.
+For production readiness, review `docs/production_readiness.md`. For the gated Vercel, Cloud Run, Cloud Tasks, database migration, and rollback workflows, follow `docs/deployment.md`. Ask AI daily quotas default to `KORA_DAILY_USER_AI_QUESTION_LIMIT=20` and `KORA_DAILY_GLOBAL_AI_QUESTION_LIMIT=100`.
 
 ## Install
 
@@ -168,14 +168,7 @@ cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Worker:
-
-```bash
-cd backend
-python -m celery -A app.worker.celery_app worker --loglevel=info
-```
-
-Redis/API/worker with Docker Compose:
+API with Docker Compose:
 
 ```bash
 docker compose up --build
@@ -188,7 +181,7 @@ curl http://localhost:8000/health
 curl http://localhost:8000/ready
 ```
 
-`/health` confirms the API process is alive. `/ready` reports Redis and database readiness.
+`/health` confirms the API process is alive. `/ready` reports task-backend and database readiness.
 
 ## Checks
 

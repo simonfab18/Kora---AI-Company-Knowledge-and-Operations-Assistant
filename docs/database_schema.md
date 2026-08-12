@@ -163,7 +163,7 @@ document_id + chunk_index + content_hash
 | `requested_by` | `uuid` | Nullable for scheduled jobs |
 | `job_type` | `text` | full/incremental/page/delete |
 | `status` | `text` | queued/running/succeeded/failed/cancelled |
-| `celery_task_id` | `text` | Nullable |
+| `celery_task_id` | `text` | Nullable historical queue task identifier |
 | `total_items` | `integer` | Default 0 |
 | `processed_items` | `integer` | Default 0 |
 | `failed_items` | `integer` | Default 0 |
@@ -565,7 +565,7 @@ $$;
 - Confirm the authenticated user belongs to the requested organization.
 - The Supabase service-role key is backend-only.
 - Row Level Security should be enabled as defense in depth.
-- Celery tasks must include and validate the organization ID.
+- Background tasks must include and validate the organization ID.
 - Citation validation must verify that the cited chunk belongs to the same organization and message context.
 - Tests must include attempted cross-organization access.
 

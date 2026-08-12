@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const syncActions = readFileSync("app/app/sync-actions.ts", "utf8");
 const knowledgeActions = readFileSync("app/app/knowledge/actions.ts", "utf8");
 const internalRunner = readFileSync("app/api/internal/sync-jobs/run/route.ts", "utf8");
-const backendTasks = readFileSync("backend/app/worker/tasks.py", "utf8");
+const backendTaskQueue = readFileSync("backend/app/task_queue.py", "utf8");
 const backendMain = readFileSync("backend/app/main.py", "utf8");
 const syncMetadataMigration = readFileSync("supabase/migrations/20260731182000_sync_job_worker_metadata.sql", "utf8");
 
@@ -20,10 +20,10 @@ describe("phase 4 durable background jobs", () => {
     expect(knowledgeActions).toContain("target_external_id");
   });
 
-  it("keeps OAuth tokens out of Celery payloads", () => {
-    expect(backendTasks).toContain("process_notion_sync_job");
-    expect(backendTasks).toContain("job_id");
-    expect(backendTasks).not.toContain("access_token_ciphertext");
+  it("keeps OAuth tokens out of queue payloads", () => {
+    expect(backendTaskQueue).toContain("SyncTaskPayload");
+    expect(backendTaskQueue).toContain("job_id");
+    expect(backendTaskQueue).not.toContain("access_token_ciphertext");
   });
 
   it("runs sync through a protected internal endpoint", () => {
@@ -45,9 +45,8 @@ describe("phase 5 observability", () => {
     expect(backendMain).toContain("request_id_middleware");
   });
 
-  it("logs worker correlation fields", () => {
-    expect(backendTasks).toContain("correlation_id");
-    expect(backendTasks).toContain("sync.job_worker_started");
-    expect(backendTasks).toContain("sync.job_worker_finished");
+  it("logs background task correlation fields", () => {
+    expect(backendTaskQueue).toContain("correlation_id");
+    expect(backendTaskQueue).toContain("sync.local_task_failed");
   });
 });
