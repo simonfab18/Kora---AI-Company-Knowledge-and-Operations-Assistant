@@ -38,6 +38,7 @@ jobs:
       GCP_WORKER_VM: ${{ vars.GCP_WORKER_VM }}
       GCP_WORKER_ZONE: ${{ vars.GCP_WORKER_ZONE }}
       PRODUCTION_SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+      VERCEL_SCOPE: simon-project2
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -151,14 +152,14 @@ jobs:
         run: npm ci
 
       - name: Pull Vercel production settings
-        run: npx --yes vercel@58.9.0 pull --yes --environment=production --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 pull --yes --environment=production --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Build frontend deployment
-        run: npx --yes vercel@58.9.0 build --prod --token="${VERCEL_TOKEN}"
+        run: npx --yes vercel@58.9.0 build --prod --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Deploy frontend to Vercel
         run: |
-          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --prod --token="${VERCEL_TOKEN}")"
+          deployment_url="$(npx --yes vercel@58.9.0 deploy --prebuilt --prod --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}")"
           echo "VERCEL_DEPLOYMENT_URL=${deployment_url}" >> "${GITHUB_ENV}"
           echo "### Production release" >> "${GITHUB_STEP_SUMMARY}"
           echo "- Commit: ${RELEASE_SHA}" >> "${GITHUB_STEP_SUMMARY}"

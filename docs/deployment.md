@@ -87,6 +87,8 @@ Run the workflow only after confirming a restorable backup and reviewing all pen
 
 Do not enable a second Vercel Git auto-deployment path while the repository workflows are enabled, or one commit can produce duplicate deployments.
 
+Current preview verification uses the GitHub Actions preview workflow against the linked Vercel project. Production deployment remains disabled until backend cloud resources and protected environments are configured.
+
 ## Google Cloud Resources
 
 Enable these APIs:
