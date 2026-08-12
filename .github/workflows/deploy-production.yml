@@ -147,6 +147,8 @@ jobs:
         run: npx --yes vercel@58.9.0 pull --yes --environment=production --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Build frontend deployment
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.KORA_API_URL }}
         run: npx --yes vercel@58.9.0 build --prod --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Deploy frontend to Vercel
