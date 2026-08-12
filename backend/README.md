@@ -1,5 +1,5 @@
 # Kora Backend
 
-FastAPI API and Celery worker foundation for local development.
+FastAPI API foundation for local development.
 
-Milestone 1 intentionally includes only health/readiness checks, environment validation, Redis/Celery connectivity, and database configuration plumbing.
+The backend provides health/readiness checks, environment validation, database connectivity, and background sync enqueueing. Production uses Google Cloud Tasks, while local development uses a lightweight in-process task fallback.

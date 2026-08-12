@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
-from app.worker.tasks import process_notion_sync_job
+from app.task_queue import SyncTaskPayload, enqueue_sync_task
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 logger = logging.getLogger(__name__)
@@ -43,11 +43,15 @@ def enqueue_sync_job(
     x_kora_internal_secret: Annotated[str | None, Header()] = None,
 ) -> EnqueueSyncJobResponse:
     require_internal_secret(x_kora_internal_secret)
-    task = process_notion_sync_job.delay(
-        str(payload.job_id),
-        str(payload.organization_id),
-        str(payload.requested_by) if payload.requested_by else None,
-        payload.correlation_id,
+    settings = get_settings()
+    task = enqueue_sync_task(
+        settings,
+        SyncTaskPayload(
+            job_id=str(payload.job_id),
+            organization_id=str(payload.organization_id),
+            requested_by=str(payload.requested_by) if payload.requested_by else None,
+            correlation_id=payload.correlation_id,
+        ),
     )
     logger.info(
         "sync_job_enqueued",
@@ -55,8 +59,9 @@ def enqueue_sync_job(
             "event": "sync.job_enqueued",
             "job_id": str(payload.job_id),
             "organization_id": str(payload.organization_id),
-            "task_id": task.id,
+            "task_id": task.task_id,
+            "task_backend": task.backend,
             "correlation_id": payload.correlation_id,
         },
     )
-    return EnqueueSyncJobResponse(accepted=True, task_id=str(task.id))
+    return EnqueueSyncJobResponse(accepted=True, task_id=task.task_id)

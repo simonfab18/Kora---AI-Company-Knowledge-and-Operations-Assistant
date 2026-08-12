@@ -59,10 +59,10 @@ After implementation, report:
 - Backend: FastAPI, Python, Pydantic, SQLAlchemy or the repository layer selected by the project.
 - Durable data: Supabase PostgreSQL.
 - Vector search: pgvector.
-- Background tasks: Celery with Redis.
+- Background tasks: Google Cloud Tasks in production with the local task fallback for development.
 - Frontend deployment: Vercel.
 - Backend deployment: Google Cloud.
-- Keep business logic out of route handlers, React page components, and Celery task entry functions.
+- Keep business logic out of route handlers, React page components, and queue entry functions.
 - External providers must be behind interfaces or adapters.
 - Database access must go through repository functions.
 - API responses must use documented schemas.
@@ -77,7 +77,7 @@ These are mandatory:
 - Never trust `organization_id` from the request without membership validation.
 - Never load a record by ID alone when it is tenant-owned.
 - Query by both record ID and organization ID.
-- Every Celery task must carry and validate organization context.
+- Every background task must carry and validate organization context.
 - Every vector search must be restricted to one organization.
 - Every citation must be validated against the same organization.
 - Add a cross-tenant denial test for new tenant-owned features.
@@ -123,7 +123,7 @@ These are mandatory:
 - Do not mix embeddings from different models.
 - A model change requires re-embedding.
 
-## Celery task rules
+## Background task rules
 
 Every task must be:
 
@@ -136,7 +136,7 @@ Every task must be:
 - Clear about which exceptions are retryable
 - Free of large message payloads
 
-Pass IDs through Redis queues, not complete documents or credentials.
+Pass IDs through queue payloads, not complete documents or credentials.
 
 ## Notion integration rules
 
@@ -243,7 +243,7 @@ Do not:
 - Push directly to the protected main branch.
 - Rewrite unrelated files.
 - Change deployment providers.
-- Replace Celery, Redis, Supabase, pgvector, FastAPI, Next.js, or shadcn/ui without approval.
+- Replace Cloud Tasks, Supabase, pgvector, FastAPI, Next.js, or shadcn/ui without approval.
 - Add billing features during the MVP unless requested.
 - Implement autonomous write access to Notion during the MVP.
 - Claim work is complete without running checks.

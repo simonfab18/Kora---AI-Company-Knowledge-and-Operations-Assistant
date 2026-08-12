@@ -13,9 +13,6 @@ dev-frontend:
 dev-api:
 	cd backend && python -m uvicorn app.main:app --reload --port 8000
 
-dev-worker:
-	cd backend && python -m celery -A app.worker.celery_app worker --loglevel=info
-
 infra-up:
 	docker compose up --build
 
