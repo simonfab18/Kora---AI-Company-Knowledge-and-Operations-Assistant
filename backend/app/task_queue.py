@@ -45,7 +45,10 @@ async def run_internal_sync_job(settings: Settings, payload: SyncTaskPayload) ->
             json={"jobId": payload.job_id, "correlationId": payload.correlation_id},
         )
         response.raise_for_status()
-        return response.json()
+        payload_json = response.json()
+        if not isinstance(payload_json, dict):
+            raise RuntimeError("Internal sync runner returned an invalid response.")
+        return payload_json
 
 
 def _run_local_task(settings: Settings, payload: SyncTaskPayload) -> None:
