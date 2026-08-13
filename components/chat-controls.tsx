@@ -23,7 +23,7 @@ export function AskComposer({ conversationId, action, dailyUsage, defaultQuestio
       router.replace(state.redirectTo);
       router.refresh();
     }
-  }, [router, state.redirectTo]);
+  }, [router, state.completionId, state.redirectTo]);
 
   function submitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
@@ -73,6 +73,55 @@ export function AskComposer({ conversationId, action, dailyUsage, defaultQuestio
       ) : null}
       {state.error ? <p className="mt-3 rounded-lg border border-rose-400/20 bg-rose-500/10 p-3 text-sm text-rose-100">{state.error}</p> : null}
     </form>
+  );
+}
+
+export function SuggestedQuestionButton({ conversationId, question, action }: { conversationId: string; question: string; action: FormAction }) {
+  const [state, formAction, pending] = useActionState(action, {});
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!state.redirectTo) return;
+
+    router.replace(state.redirectTo);
+    router.refresh();
+  }, [router, state.completionId, state.redirectTo]);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="conversationId" value={conversationId} />
+      <input type="hidden" name="question" value={question} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 text-left text-xs font-medium text-slate-300 transition hover:border-blue-300/30 hover:text-white disabled:cursor-wait disabled:opacity-60"
+      >
+        {pending ? <Loader2 className="shrink-0 animate-spin" size={13} aria-hidden="true" /> : null}
+        <span>{pending ? "Asking Kora..." : question}</span>
+      </button>
+      {state.error ? <p className="mt-2 text-xs text-rose-200">{state.error}</p> : null}
+    </form>
+  );
+}
+
+export function ChatThreadViewport({ latestMessageId, children }: { latestMessageId?: string; children: ReactNode }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [latestMessageId]);
+
+  return (
+    <div ref={viewportRef} className="kora-scroll-panel flex-1 overflow-y-auto p-4 md:p-5">
+      {children}
+    </div>
   );
 }
 

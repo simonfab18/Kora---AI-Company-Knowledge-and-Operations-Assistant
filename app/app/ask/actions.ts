@@ -108,15 +108,11 @@ export async function askQuestionAction(_prevState: ActionState, formData: FormD
   revalidatePath("/app");
   revalidatePath("/app/ask");
   revalidatePath("/app/conversations");
-  return { message: "Answer saved.", redirectTo: `/app/ask?conversationId=${nextConversationId}` };
-}
-
-export async function askSuggestedQuestionAction(formData: FormData) {
-  const result = await askQuestionAction({}, formData);
-
-  if (result.redirectTo) {
-    redirect(result.redirectTo);
-  }
+  return {
+    message: "Answer saved.",
+    redirectTo: `/app/ask?conversationId=${nextConversationId}`,
+    completionId: requestId,
+  };
 }
 
 export async function submitMessageFeedbackAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
