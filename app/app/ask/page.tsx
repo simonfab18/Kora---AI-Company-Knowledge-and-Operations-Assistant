@@ -1,4 +1,4 @@
-import { archiveConversationAction, askQuestionAction, deleteConversationAction, renameConversationAction, restoreConversationAction, submitMessageFeedbackAction, togglePinnedConversationAction } from "@/app/app/ask/actions";
+import { archiveConversationAction, askQuestionAction, askSuggestedQuestionAction, deleteConversationAction, renameConversationAction, restoreConversationAction, submitMessageFeedbackAction, togglePinnedConversationAction } from "@/app/app/ask/actions";
 import { loadDailyAiUsage } from "@/lib/ai-usage";
 import { AppShell } from "@/components/app-shell";
 import { AnswerContent } from "@/components/answer-content";
@@ -267,7 +267,15 @@ export default async function Page({ searchParams }: AskPageProps) {
                             {isAssistant && message.follow_up_question ? <p className="mt-4 rounded-lg border border-blue-300/15 bg-blue-400/[0.07] px-3 py-2 text-sm text-blue-100">{message.follow_up_question}</p> : null}
                             {isAssistant && message.suggested_follow_ups?.length > 0 ? (
                               <div className="mt-4 flex flex-wrap gap-2">
-                                {message.suggested_follow_ups.map((suggestion) => <Link key={suggestion} href={`/app/ask?conversationId=${thread.conversation?.id ?? ""}&q=${encodeURIComponent(suggestion)}`} className="rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-300/30 hover:text-white">{suggestion}</Link>)}
+                                {message.suggested_follow_ups.map((suggestion) => (
+                                  <form key={suggestion} action={askSuggestedQuestionAction}>
+                                    <input type="hidden" name="conversationId" value={thread.conversation?.id ?? ""} />
+                                    <input type="hidden" name="question" value={suggestion} />
+                                    <button type="submit" className="rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-300/30 hover:text-white">
+                                      {suggestion}
+                                    </button>
+                                  </form>
+                                ))}
                               </div>
                             ) : null}
                             {messageCitations.length > 0 ? (
