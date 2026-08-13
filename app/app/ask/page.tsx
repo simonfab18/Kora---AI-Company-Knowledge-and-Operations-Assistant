@@ -1,9 +1,9 @@
-import { archiveConversationAction, askQuestionAction, askSuggestedQuestionAction, deleteConversationAction, renameConversationAction, restoreConversationAction, submitMessageFeedbackAction, togglePinnedConversationAction } from "@/app/app/ask/actions";
+import { archiveConversationAction, askQuestionAction, deleteConversationAction, renameConversationAction, restoreConversationAction, submitMessageFeedbackAction, togglePinnedConversationAction } from "@/app/app/ask/actions";
 import { loadDailyAiUsage } from "@/lib/ai-usage";
 import { AppShell } from "@/components/app-shell";
 import { AnswerContent } from "@/components/answer-content";
 import { MessageCopyButton } from "@/components/message-copy-button";
-import { AskComposer, ConversationActionsMenu } from "@/components/chat-controls";
+import { AskComposer, ChatThreadViewport, ConversationActionsMenu, SuggestedQuestionButton } from "@/components/chat-controls";
 import { MessageFeedbackControls } from "@/components/message-feedback-controls";
 import { requireActiveOrganization } from "@/lib/authorization";
 import type { Conversation, Message, MessageCitation, MessageFeedbackRating } from "@/lib/database.types";
@@ -234,7 +234,7 @@ export default async function Page({ searchParams }: AskPageProps) {
               </div>
             </header>
 
-            <div className="kora-scroll-panel flex-1 overflow-y-auto p-4 md:p-5">
+            <ChatThreadViewport latestMessageId={thread.messages.at(-1)?.id}>
               {thread.messages.length === 0 ? (
                 <div className="flex min-h-full items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.025] p-6 text-center">
                   <div className="max-w-xl">
@@ -268,13 +268,12 @@ export default async function Page({ searchParams }: AskPageProps) {
                             {isAssistant && message.suggested_follow_ups?.length > 0 ? (
                               <div className="mt-4 flex flex-wrap gap-2">
                                 {message.suggested_follow_ups.map((suggestion) => (
-                                  <form key={suggestion} action={askSuggestedQuestionAction}>
-                                    <input type="hidden" name="conversationId" value={thread.conversation?.id ?? ""} />
-                                    <input type="hidden" name="question" value={suggestion} />
-                                    <button type="submit" className="rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-300/30 hover:text-white">
-                                      {suggestion}
-                                    </button>
-                                  </form>
+                                  <SuggestedQuestionButton
+                                    key={suggestion}
+                                    conversationId={thread.conversation?.id ?? ""}
+                                    question={suggestion}
+                                    action={askQuestionAction}
+                                  />
                                 ))}
                               </div>
                             ) : null}
@@ -312,7 +311,7 @@ export default async function Page({ searchParams }: AskPageProps) {
                   })}
                 </div>
               )}
-            </div>
+            </ChatThreadViewport>
 
             <AskComposer conversationId={thread.conversation?.id ?? null} dailyUsage={dailyUsage} defaultQuestion={defaultQuestion} action={askQuestionAction} />
           </section>
