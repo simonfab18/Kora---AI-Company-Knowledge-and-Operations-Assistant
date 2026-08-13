@@ -6,6 +6,7 @@ import { analyzeQuestion, cleanGeneratedAnswer, extractInlineCitationIds, format
 import { recordKnowledgeGap } from "@/lib/knowledge-gaps";
 import type { Organization } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MAX_RETRIEVED_CONTEXT_CHUNKS = 8;
 const PROMPT_VERSION = "kora-rag-v2";
@@ -426,6 +427,7 @@ async function recordChatUsage(input: {
   quantity: number;
   metadata: Record<string, unknown>;
   quotaReservationId?: string | null;
+  quotaSupabase?: SupabaseClient;
 }) {
   if (input.quotaReservationId) {
     await commitDailyAiQuotaReservation({
@@ -433,6 +435,7 @@ async function recordChatUsage(input: {
       provider: input.provider,
       model: input.model,
       metadata: input.metadata,
+      supabase: input.quotaSupabase,
     });
     return;
   }
@@ -509,12 +512,14 @@ export async function answerGroundedQuestion({
   userId,
   question,
   quotaReservationId,
+  quotaSupabase,
 }: {
   conversationId?: string | null;
   organizationId: string;
   userId: string;
   question: string;
   quotaReservationId?: string | null;
+  quotaSupabase?: SupabaseClient;
 }): Promise<GroundedChatResult> {
   const cleanedQuestion = question.replace(/\s+/g, " ").trim();
   if (cleanedQuestion.length < 2) throw new Error("Ask a question first.");
@@ -555,6 +560,7 @@ export async function answerGroundedQuestion({
       organizationId, userId, provider: null, model: null, quantity: 1,
       metadata: { conversation_id: conversation.id, outcome: "insufficient_context", answer_mode: answerMode, gap_recorded: true },
       quotaReservationId,
+      quotaSupabase,
     });
     return {
       conversationId: conversation.id,
@@ -647,6 +653,7 @@ export async function answerGroundedQuestion({
       latency_ms: latencyMs,
     },
     quotaReservationId,
+    quotaSupabase,
   });
 
   const supabase = createAdminClient();

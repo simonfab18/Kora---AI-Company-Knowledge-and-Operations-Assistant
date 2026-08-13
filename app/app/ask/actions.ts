@@ -9,6 +9,7 @@ import { answerGroundedQuestion } from "@/lib/grounded-chat";
 import { recordKnowledgeGap } from "@/lib/knowledge-gaps";
 import { logOperationalEvent } from "@/lib/operational-logging";
 import { checkDistributedRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -48,6 +49,7 @@ export async function askQuestionAction(_prevState: ActionState, formData: FormD
   const conversationId = getString(formData, "conversationId") || null;
   const requestId = getString(formData, "requestId") || randomUUID();
   const { user, membership } = await requireActiveOrganization();
+  const userSupabase = await createClient();
   let nextConversationId = conversationId;
   let quotaReservationId: string | null = null;
   const rateLimit = await checkDistributedRateLimit({
@@ -64,6 +66,7 @@ export async function askQuestionAction(_prevState: ActionState, formData: FormD
     organizationId: membership.organization.id,
     userId: user.id,
     idempotencyKey: requestId,
+    supabase: userSupabase,
   });
 
   if (!quotaReservation.allowed || !quotaReservation.reservationId) {
@@ -78,11 +81,12 @@ export async function askQuestionAction(_prevState: ActionState, formData: FormD
       userId: user.id,
       question,
       quotaReservationId,
+      quotaSupabase: userSupabase,
     });
     nextConversationId = result.conversationId;
   } catch (error) {
     if (quotaReservationId) {
-      await releaseDailyAiQuotaReservation(quotaReservationId).catch((releaseError) => {
+      await releaseDailyAiQuotaReservation(quotaReservationId, userSupabase).catch((releaseError) => {
         logOperationalEvent("error", "ask.quota_release_failed", {
           error: releaseError,
           organizationId: membership.organization.id,

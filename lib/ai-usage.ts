@@ -1,5 +1,7 @@
 ﻿import { createAdminClient } from "@/lib/supabase/admin";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 function positiveIntegerEnv(name: string, fallback: number) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
@@ -135,12 +137,13 @@ export async function reserveDailyAiQuota({
   organizationId,
   userId,
   idempotencyKey,
+  supabase = createAdminClient(),
 }: {
   organizationId: string;
   userId: string;
   idempotencyKey: string;
+  supabase?: SupabaseClient;
 }): Promise<AiQuotaReservation> {
-  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("reserve_daily_ai_quota", {
     p_organization_id: organizationId,
     p_user_id: userId,
@@ -167,8 +170,9 @@ export async function commitDailyAiQuotaReservation(input: {
   provider: string | null;
   model: string | null;
   metadata: Record<string, unknown>;
+  supabase?: SupabaseClient;
 }) {
-  const supabase = createAdminClient();
+  const supabase = input.supabase ?? createAdminClient();
   const { data, error } = await supabase.rpc("commit_ai_quota_reservation", {
     p_reservation_id: input.reservationId,
     p_provider: input.provider,
@@ -181,8 +185,7 @@ export async function commitDailyAiQuotaReservation(input: {
   }
 }
 
-export async function releaseDailyAiQuotaReservation(reservationId: string) {
-  const supabase = createAdminClient();
+export async function releaseDailyAiQuotaReservation(reservationId: string, supabase: SupabaseClient = createAdminClient()) {
   const { error } = await supabase.rpc("release_ai_quota_reservation", {
     p_reservation_id: reservationId,
   });
