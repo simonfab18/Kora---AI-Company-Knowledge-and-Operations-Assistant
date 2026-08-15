@@ -1,4 +1,4 @@
-import { getSafeAuthRedirect, isInvitationRedirect } from "@/lib/auth-redirect";
+import { getSafeAuthRedirect, isInvitationRedirect, isPasswordResetRedirect } from "@/lib/auth-redirect";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -31,7 +31,8 @@ export async function GET(request: Request) {
     if (user) {
       const hasOrganization = await userHasOrganization(user.id);
       const isInvitationFlow = isInvitationRedirect(requestedNext);
-      if (!hasOrganization && !isInvitationFlow) {
+      const isPasswordResetFlow = isPasswordResetRedirect(requestedNext);
+      if (!hasOrganization && !isInvitationFlow && !isPasswordResetFlow) {
         next = "/setup/organization";
       } else if (requestedNext === "/setup/organization") {
         next = "/app";

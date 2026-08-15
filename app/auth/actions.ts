@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSlug } from "@/lib/auth";
-import { getSafeAuthRedirect } from "@/lib/auth-redirect";
+import { getAuthCallbackUrl, getSafeAuthRedirect } from "@/lib/auth-redirect";
 import type { ActionState } from "@/lib/action-state";
 import { checkDistributedRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { checkPasswordCompromise, passwordCompromiseMessage } from "@/lib/password-security";
@@ -105,7 +105,7 @@ export async function signInWithGoogleAction(_prevState: ActionState, formData: 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${getOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: getAuthCallbackUrl(getOrigin(), next),
     },
   });
 
@@ -163,7 +163,7 @@ export async function signUpAction(_prevState: ActionState, formData: FormData):
     password,
     options: {
       data: { full_name: fullName, first_name: firstName, last_name: lastName },
-      emailRedirectTo: `${getOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: getAuthCallbackUrl(getOrigin(), next),
     },
   });
 
@@ -204,7 +204,7 @@ export async function requestPasswordResetAction(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getOrigin()}/auth/confirm?next=/reset-password/update`,
+    redirectTo: getAuthCallbackUrl(getOrigin(), "/reset-password/update"),
   });
 
   if (error) {
