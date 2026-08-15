@@ -1,11 +1,12 @@
 ﻿import { commitDailyAiQuotaReservation } from "@/lib/ai-usage";
-import { createGenerationProvider, type GenerationUsage } from "@/lib/generation";
+import { createGenerationProvider, type GenerationUsage, type GroundedGeneration } from "@/lib/generation";
 import type { RetrievedChunk } from "@/lib/document-indexing";
 import { hydrateNeighborContext, searchHybridDocumentChunks } from "@/lib/hybrid-retrieval";
 import { analyzeQuestion, cleanGeneratedAnswer, extractInlineCitationIds, formatInlineCitations, normalizeSuggestedFollowUps, retrievalConfidence, type AnswerMode } from "@/lib/rag-quality";
 import { recordKnowledgeGap } from "@/lib/knowledge-gaps";
 import {
   buildKoraProductPrompt,
+  buildKoraProductFallback,
   classifyAssistantLane,
   conversationalReply,
   formatKoraProductAnswer,
@@ -15,6 +16,7 @@ import {
   retrieveKoraGuides,
   type AssistantConversationMessage,
 } from "@/lib/kora-assistant";
+import { logOperationalEvent } from "@/lib/operational-logging";
 import type { Organization } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -619,13 +621,46 @@ export async function answerGroundedQuestion({
     const guides = retrieveKoraGuides(cleanedQuestion);
     const provider = createGenerationProvider({ provider: organization.ai_provider, model: organization.generation_model });
     const start = Date.now();
-    const generated = await provider.generateGroundedAnswer(buildKoraProductPrompt(cleanedQuestion, guides, recentMessages));
+    let generated: GroundedGeneration | null = null;
+    let productGenerationError: unknown = null;
+    try {
+      generated = await provider.generateGroundedAnswer(buildKoraProductPrompt(cleanedQuestion, guides, recentMessages));
+    } catch (error) {
+      productGenerationError = error;
+      logOperationalEvent("warn", "ask.product_help_generation_failed", {
+        error,
+        organizationId,
+        userId,
+        conversationId: conversation.id,
+        provider: provider.provider,
+        model: provider.model,
+      });
+    }
     const latencyMs = Date.now() - start;
-    const formatted = formatKoraProductAnswer({ ...generated, answer: cleanGeneratedAnswer(generated.answer) }, guides);
-    const answerMode: AnswerMode = generated.answerMode;
+    let formatted = buildKoraProductFallback(guides);
+    let usedDocumentationFallback = !generated;
+    if (generated) {
+      try {
+        formatted = formatKoraProductAnswer({ ...generated, answer: cleanGeneratedAnswer(generated.answer) }, guides);
+      } catch (error) {
+        productGenerationError = error;
+        usedDocumentationFallback = true;
+        logOperationalEvent("warn", "ask.product_help_validation_failed", {
+          error,
+          organizationId,
+          userId,
+          conversationId: conversation.id,
+          provider: provider.provider,
+          model: provider.model,
+        });
+      }
+    }
+    const answerMode: AnswerMode = usedDocumentationFallback ? "partially_answerable" : generated?.answerMode ?? "partially_answerable";
     const confidence = answerMode === "no_reliable_answer" ? "medium" : "high";
-    const followUpQuestion = generated.followUpQuestion?.slice(0, 300) ?? null;
-    const suggestedFollowUps = normalizeSuggestedFollowUps(generated.suggestedFollowUps);
+    const followUpQuestion = generated?.followUpQuestion?.slice(0, 300) ?? null;
+    const suggestedFollowUps = generated
+      ? normalizeSuggestedFollowUps(generated.suggestedFollowUps)
+      : ["How do I connect Notion?", "How does Kora answer company questions?", "How do citations work?"];
     const assistantMessageId = await insertMessage({
       conversationId: conversation.id,
       organizationId,
@@ -634,7 +669,7 @@ export async function answerGroundedQuestion({
       confidence,
       provider: KORA_PRODUCT_PROVIDER,
       model: provider.model,
-      usage: generated.usage,
+      usage: generated?.usage,
       latencyMs,
       answerMode,
       followUpQuestion,
@@ -643,7 +678,7 @@ export async function answerGroundedQuestion({
     await saveAnswerTrace({
       organizationId, userId, conversationId: conversation.id, messageId: assistantMessageId, question: cleanedQuestion,
       rewrittenQueries: formatted.sources.map((source) => source.title), answer: formatted.answer, answerMode, confidence,
-      model: `${provider.provider}:${provider.model}`, latencyMs, usage: generated.usage, retrieved: [], cited: [], promptVersion: KORA_PRODUCT_PROMPT_VERSION,
+      model: `${provider.provider}:${provider.model}`, latencyMs, usage: generated?.usage, retrieved: [], cited: [], promptVersion: KORA_PRODUCT_PROMPT_VERSION,
     });
     await recordChatUsage({
       organizationId, userId, provider: provider.provider, model: provider.model, quantity: 1,
@@ -652,9 +687,11 @@ export async function answerGroundedQuestion({
         assistant_message_id: assistantMessageId,
         outcome: "product_help",
         answer_mode: answerMode,
+        documentation_fallback: usedDocumentationFallback,
+        generation_error: productGenerationError instanceof Error ? productGenerationError.message : null,
         guide_slugs: formatted.sources.map((source) => source.slug),
-        prompt_tokens: generated.usage?.promptTokens ?? null,
-        completion_tokens: generated.usage?.completionTokens ?? null,
+        prompt_tokens: generated?.usage?.promptTokens ?? null,
+        completion_tokens: generated?.usage?.completionTokens ?? null,
         latency_ms: latencyMs,
       },
       quotaReservationId,
