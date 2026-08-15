@@ -4,6 +4,8 @@ import { AuthForm } from "@/components/auth-form";
 import { AuthShell } from "@/components/auth-shell";
 import { getSafeAuthRedirect, isInvitationRedirect } from "@/lib/auth-redirect";
 
+export const metadata = { title: "Create account" };
+
 export default async function SignupPage({
   searchParams,
 }: {

@@ -20,6 +20,8 @@ import { ArrowLeft, CheckCircle2, Database, FileText, MessageSquareText, PlugZap
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "Workspace onboarding" };
+
 const inputClass = "mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-300";
 const textareaClass = "mt-2 min-h-28 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-300";
 const selectClass = "mt-2 h-11 w-full rounded-lg border border-white/10 bg-[#111] px-3 text-white outline-none focus:border-blue-300";

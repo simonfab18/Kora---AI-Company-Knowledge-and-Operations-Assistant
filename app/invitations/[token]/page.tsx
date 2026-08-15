@@ -4,6 +4,8 @@ import { AuthShell } from "@/components/auth-shell";
 import { AcceptInvitationForm } from "@/components/organization-forms";
 import { getCurrentUser } from "@/lib/auth";
 
+export const metadata = { title: "Accept invitation" };
+
 export default async function InvitationPage({
   params,
 }: {

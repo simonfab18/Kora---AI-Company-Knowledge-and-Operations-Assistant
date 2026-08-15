@@ -5,6 +5,8 @@ import { requireActiveOrganization } from "@/lib/authorization";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ShieldCheck } from "lucide-react";
 
+export const metadata = { title: "Account preferences" };
+
 type AccountProfile = {
   appearance_preference: string | null;
   notification_preferences: { sync?: boolean; members?: boolean; gaps?: boolean } | null;

@@ -16,6 +16,8 @@ import { roleDescription, summarizeInvitations, summarizeMembers } from "@/lib/m
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Activity, Crown, Mail, ShieldCheck, UserCheck, UserCog, UserRoundX, Users } from "lucide-react";
 
+export const metadata = { title: "Members" };
+
 const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 type MemberRow = {

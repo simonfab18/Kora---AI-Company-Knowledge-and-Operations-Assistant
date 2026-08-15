@@ -3,6 +3,8 @@ import { loadDailyAiUsage } from "@/lib/ai-usage";
 import { requireActiveOrganization } from "@/lib/authorization";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const metadata = { title: "AI usage" };
+
 export default async function UsagePage() {
   const { user, membership } = await requireActiveOrganization();
   const supabase = createAdminClient();

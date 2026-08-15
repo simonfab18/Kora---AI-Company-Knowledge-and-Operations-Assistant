@@ -1,6 +1,8 @@
 ﻿import { AppShell } from "@/components/app-shell";
 import { CreditCard } from "lucide-react";
 
+export const metadata = { title: "Billing" };
+
 export default function BillingPage() {
   return (
     <AppShell title="Billing" description="Portfolio Free plan information. No payment method or paid subscription is required.">
