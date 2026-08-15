@@ -9,6 +9,7 @@ import { requireActiveOrganization } from "@/lib/authorization";
 import type { Conversation, Message, MessageCitation, MessageFeedbackRating } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { answerModeLabel } from "@/lib/rag-quality";
+import { isKoraConversationProvider, isKoraProductProvider } from "@/lib/kora-assistant";
 import { Bot, ChevronDown, ExternalLink, FileText, MessageSquare, User } from "lucide-react";
 import Link from "next/link";
 
@@ -249,6 +250,7 @@ export default async function Page({ searchParams }: AskPageProps) {
                   {thread.messages.map((message) => {
                     const messageCitations = thread.citations.get(message.id) ?? [];
                     const isAssistant = message.role === "assistant";
+                    const isBuiltInKoraAnswer = isKoraProductProvider(message.model_provider) || isKoraConversationProvider(message.model_provider);
                     return (
                       <article key={message.id} className={`rounded-lg border bg-white/[0.035] p-4 md:p-5 ${isAssistant ? "border-blue-300/20" : "border-white/10"}`}>
                         <div className="flex items-start gap-3">
@@ -258,7 +260,7 @@ export default async function Page({ searchParams }: AskPageProps) {
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-semibold text-white">{isAssistant ? "Kora" : "You"}</p>
-                              {isAssistant ? <span className="glass-soft rounded px-2 py-1 text-xs text-slate-300">{answerModeLabel(message.answer_mode, messageCitations.length)}</span> : null}
+                              {isAssistant ? <span className="glass-soft rounded px-2 py-1 text-xs text-slate-300">{answerModeLabel(message.answer_mode, messageCitations.length, message.model_provider)}</span> : null}
                               <span className="text-xs text-slate-600">{formatDate(message.created_at)}</span>{isAssistant ? <MessageCopyButton content={message.content} /> : null}
                             </div>
                             <div className="kora-scroll-panel mt-3 max-h-[360px] overflow-y-auto pr-2 text-sm leading-6 text-slate-300">
@@ -300,7 +302,7 @@ export default async function Page({ searchParams }: AskPageProps) {
                                   );
                                 })}
                               </div>
-                            ) : isAssistant ? (
+                            ) : isAssistant && !isBuiltInKoraAnswer ? (
                               <p className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100"><MessageSquare size={13} aria-hidden="true" /> No sources support this response yet.</p>
                             ) : null}
                             {isAssistant ? <MessageFeedbackControls messageId={message.id} currentRating={thread.feedback.get(message.id) ?? null} action={submitMessageFeedbackAction} /> : null}

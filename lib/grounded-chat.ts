@@ -4,6 +4,17 @@ import type { RetrievedChunk } from "@/lib/document-indexing";
 import { hydrateNeighborContext, searchHybridDocumentChunks } from "@/lib/hybrid-retrieval";
 import { analyzeQuestion, cleanGeneratedAnswer, extractInlineCitationIds, formatInlineCitations, normalizeSuggestedFollowUps, retrievalConfidence, type AnswerMode } from "@/lib/rag-quality";
 import { recordKnowledgeGap } from "@/lib/knowledge-gaps";
+import {
+  buildKoraProductPrompt,
+  classifyAssistantLane,
+  conversationalReply,
+  formatKoraProductAnswer,
+  KORA_CONVERSATION_PROVIDER,
+  KORA_PRODUCT_PROMPT_VERSION,
+  KORA_PRODUCT_PROVIDER,
+  retrieveKoraGuides,
+  type AssistantConversationMessage,
+} from "@/lib/kora-assistant";
 import type { Organization } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -350,6 +361,34 @@ async function loadOrCreateConversation({
   return data as ConversationRow;
 }
 
+async function loadRecentConversationMessages(conversationId: string, organizationId: string): Promise<AssistantConversationMessage[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("messages")
+    .select("role, content, model_provider, created_at")
+    .eq("conversation_id", conversationId)
+    .eq("organization_id", organizationId)
+    .in("role", ["user", "assistant"])
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  return (data ?? []).reverse().map((message) => ({
+    role: message.role as "user" | "assistant",
+    content: message.content,
+    provider: message.model_provider ?? null,
+  }));
+}
+
+async function touchConversation(conversationId: string, organizationId: string, userId: string) {
+  const supabase = createAdminClient();
+  await supabase
+    .from("conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", conversationId)
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId);
+}
+
 async function insertMessage(input: {
   conversationId: string;
   organizationId: string;
@@ -467,6 +506,7 @@ async function saveAnswerTrace(input: {
   usage?: GenerationUsage;
   retrieved: CitationCandidate[];
   cited: CitationCandidate[];
+  promptVersion?: string;
 }) {
   const supabase = createAdminClient();
   const { data: trace, error } = await supabase.from("answer_traces").insert({
@@ -479,7 +519,7 @@ async function saveAnswerTrace(input: {
     answer: input.answer,
     answer_mode: input.answerMode,
     model: input.model,
-    prompt_version: PROMPT_VERSION,
+    prompt_version: input.promptVersion ?? PROMPT_VERSION,
     retrieval_confidence: input.confidence,
     validation_status: {
       citation_ids_valid: true,
@@ -491,7 +531,7 @@ async function saveAnswerTrace(input: {
     output_tokens: input.usage?.completionTokens ?? null,
   }).select("id").single();
 
-  if (error || !trace) return;
+  if (error || !trace || input.retrieved.length === 0) return;
   const citedIds = new Set(input.cited.map((citation) => citation.chunk_id));
   await supabase.from("answer_evidence").insert(input.retrieved.map((citation) => ({
     organization_id: input.organizationId,
@@ -527,12 +567,112 @@ export async function answerGroundedQuestion({
 
   const organization = await loadOrganization(organizationId);
   const conversation = await loadOrCreateConversation({ conversationId, organizationId, userId, question: cleanedQuestion });
+  const recentMessages = await loadRecentConversationMessages(conversation.id, organizationId);
+  const assistantLane = classifyAssistantLane(cleanedQuestion, recentMessages);
   const userMessageId = await insertMessage({
     conversationId: conversation.id,
     organizationId,
     role: "user",
     content: cleanedQuestion,
   });
+
+  if (assistantLane === "conversation") {
+    const answer = conversationalReply(cleanedQuestion);
+    const suggestedFollowUps = ["What can Kora help me with?", "How do I connect Notion?", "How do citations work?"];
+    const assistantMessageId = await insertMessage({
+      conversationId: conversation.id,
+      organizationId,
+      role: "assistant",
+      content: answer,
+      confidence: "high",
+      provider: KORA_CONVERSATION_PROVIDER,
+      model: "built-in",
+      answerMode: "fully_answerable",
+      suggestedFollowUps,
+    });
+    await saveAnswerTrace({
+      organizationId, userId, conversationId: conversation.id, messageId: assistantMessageId, question: cleanedQuestion,
+      rewrittenQueries: [], answer, answerMode: "fully_answerable", confidence: "high",
+      model: `${KORA_CONVERSATION_PROVIDER}:built-in`, latencyMs: 0, retrieved: [], cited: [], promptVersion: "kora-conversation-v1",
+    });
+    await recordChatUsage({
+      organizationId, userId, provider: KORA_CONVERSATION_PROVIDER, model: "built-in", quantity: 1,
+      metadata: { conversation_id: conversation.id, assistant_message_id: assistantMessageId, outcome: "conversation", answer_mode: "fully_answerable" },
+      quotaReservationId,
+      quotaSupabase,
+    });
+    await touchConversation(conversation.id, organizationId, userId);
+    return {
+      conversationId: conversation.id,
+      userMessageId,
+      assistantMessageId,
+      answer,
+      confidence: "high",
+      citations: [],
+      answerMode: "fully_answerable",
+      followUpQuestion: null,
+      suggestedFollowUps,
+    };
+  }
+
+  if (assistantLane === "product_help") {
+    const guides = retrieveKoraGuides(cleanedQuestion);
+    const provider = createGenerationProvider({ provider: organization.ai_provider, model: organization.generation_model });
+    const start = Date.now();
+    const generated = await provider.generateGroundedAnswer(buildKoraProductPrompt(cleanedQuestion, guides, recentMessages));
+    const latencyMs = Date.now() - start;
+    const formatted = formatKoraProductAnswer({ ...generated, answer: cleanGeneratedAnswer(generated.answer) }, guides);
+    const answerMode: AnswerMode = generated.answerMode;
+    const confidence = answerMode === "no_reliable_answer" ? "medium" : "high";
+    const followUpQuestion = generated.followUpQuestion?.slice(0, 300) ?? null;
+    const suggestedFollowUps = normalizeSuggestedFollowUps(generated.suggestedFollowUps);
+    const assistantMessageId = await insertMessage({
+      conversationId: conversation.id,
+      organizationId,
+      role: "assistant",
+      content: formatted.answer,
+      confidence,
+      provider: KORA_PRODUCT_PROVIDER,
+      model: provider.model,
+      usage: generated.usage,
+      latencyMs,
+      answerMode,
+      followUpQuestion,
+      suggestedFollowUps,
+    });
+    await saveAnswerTrace({
+      organizationId, userId, conversationId: conversation.id, messageId: assistantMessageId, question: cleanedQuestion,
+      rewrittenQueries: formatted.sources.map((source) => source.title), answer: formatted.answer, answerMode, confidence,
+      model: `${provider.provider}:${provider.model}`, latencyMs, usage: generated.usage, retrieved: [], cited: [], promptVersion: KORA_PRODUCT_PROMPT_VERSION,
+    });
+    await recordChatUsage({
+      organizationId, userId, provider: provider.provider, model: provider.model, quantity: 1,
+      metadata: {
+        conversation_id: conversation.id,
+        assistant_message_id: assistantMessageId,
+        outcome: "product_help",
+        answer_mode: answerMode,
+        guide_slugs: formatted.sources.map((source) => source.slug),
+        prompt_tokens: generated.usage?.promptTokens ?? null,
+        completion_tokens: generated.usage?.completionTokens ?? null,
+        latency_ms: latencyMs,
+      },
+      quotaReservationId,
+      quotaSupabase,
+    });
+    await touchConversation(conversation.id, organizationId, userId);
+    return {
+      conversationId: conversation.id,
+      userMessageId,
+      assistantMessageId,
+      answer: formatted.answer,
+      confidence,
+      citations: [],
+      answerMode,
+      followUpQuestion,
+      suggestedFollowUps,
+    };
+  }
 
   const hybrid = await searchHybridDocumentChunks({ organization, question: cleanedQuestion });
   const rankedChunks = rankRetrievedChunks(cleanedQuestion, hybrid.chunks).slice(0, MAX_RETRIEVED_CONTEXT_CHUNKS);
@@ -562,6 +702,7 @@ export async function answerGroundedQuestion({
       quotaReservationId,
       quotaSupabase,
     });
+    await touchConversation(conversation.id, organizationId, userId);
     return {
       conversationId: conversation.id,
       userMessageId,
@@ -656,13 +797,7 @@ export async function answerGroundedQuestion({
     quotaSupabase,
   });
 
-  const supabase = createAdminClient();
-  await supabase
-    .from("conversations")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", conversation.id)
-    .eq("organization_id", organizationId)
-    .eq("user_id", userId);
+  await touchConversation(conversation.id, organizationId, userId);
 
   return {
     conversationId: conversation.id,

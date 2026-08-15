@@ -53,7 +53,9 @@ export function rewriteRetrievalQueries(question: string) {
   return Array.from(new Set([question.trim(), expanded, exact].filter((query) => query.length >= 2))).slice(0, 3);
 }
 
-export function answerModeLabel(mode: AnswerMode | null | undefined, sourceCount: number) {
+export function answerModeLabel(mode: AnswerMode | null | undefined, sourceCount: number, provider?: string | null) {
+  if (provider === "kora_product_help") return "Kora product guide";
+  if (provider === "kora_conversation") return "Kora assistant";
   if (mode === "partially_answerable") return "Partial answer";
   if (mode === "ambiguous") return "Clarification included";
   if (mode === "no_reliable_answer") return "More information needed";
@@ -100,4 +102,3 @@ export function retrievalConfidence(input: {
   if (composite >= 0.56) return "medium" as const;
   return "low" as const;
 }
-
