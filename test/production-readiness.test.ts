@@ -47,6 +47,15 @@ describe("production environment validation", () => {
     expect(summary.missing.map((check) => check.name)).toContain("DISTRIBUTED_RATE_LIMIT_REDIS");
   });
 
+  it("rejects localhost as the production auth origin", () => {
+    const summary = productionReadinessSummary({
+      APP_ENV: "production",
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+    });
+
+    expect(summary.warnings.map((check) => check.name)).toContain("NEXT_PUBLIC_SITE_URL");
+  });
+
   it("throws a focused error for required env groups", () => {
     expect(() => assertRequiredEnvironment(["SUPABASE_SERVICE_ROLE_KEY"], {})).toThrow(
       "Missing required environment variables: SUPABASE_SERVICE_ROLE_KEY",
