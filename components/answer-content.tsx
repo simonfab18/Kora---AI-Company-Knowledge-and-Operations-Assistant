@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 function inlineContent(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean);
+  const parts = text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(\/documentation\/[a-z0-9-]+\)|\[\d+\])/g).filter(Boolean);
   return parts.map((part, index): ReactNode => {
     if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={`${part}-${index}`} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
+    const link = part.match(/^\[([^\]]+)\]\((\/documentation\/[a-z0-9-]+)\)$/);
+    if (link) {
+      const [, label, href] = link;
+      return <Link key={`${href}-${index}`} href={href} className="font-medium text-blue-200 underline decoration-blue-300/30 underline-offset-2 hover:text-blue-100">{label}</Link>;
+    }
     if (/^\[\d+\]$/.test(part)) return <span key={`${part}-${index}`} className="ml-0.5 font-mono text-xs font-semibold text-blue-200">{part}</span>;
     return part;
   });
@@ -27,4 +33,3 @@ export function AnswerContent({ content }: { content: string }) {
     </div>
   );
 }
-

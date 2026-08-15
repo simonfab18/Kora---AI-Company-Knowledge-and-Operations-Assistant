@@ -37,6 +37,9 @@ function safeChatError(error: unknown) {
     if (error.message.includes("unavailable source chunks")) {
       return "The model returned an unsupported citation, so the answer was rejected safely.";
     }
+    if (error.message.includes("unavailable Kora guide")) {
+      return "Kora could not validate the product guide used for that answer. Try the question again.";
+    }
     if (error.message === "Ask a question first." || error.message === "Keep questions under 4,000 characters.") {
       return error.message;
     }
