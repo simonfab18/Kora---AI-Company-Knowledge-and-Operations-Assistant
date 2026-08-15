@@ -62,6 +62,8 @@ const CONVERSATION_PATTERNS = [
   /^(?:what is your name|are you (?:an?\s+)?ai|can we chat|help me)[?.! ]*$/,
 ];
 
+const PRODUCT_OVERVIEW_PATTERN = /\b(?:what is|what does|tell me about)\s+(?:this\s+)?kora\b|\bwhat\s+is\s+kora\s+about\b/;
+
 const QUERY_EXPANSIONS: Record<string, string[]> = {
   account: ["signup", "login", "profile", "password"],
   answer: ["ask", "citations", "confidence", "sources"],
@@ -121,12 +123,13 @@ export function retrieveKoraGuides(question: string, limit = 4): KoraGuideCandid
     const headings = normalize(guide.sections.map((section) => section.heading).join(" "));
     const content = guideSearchText(guide);
     const searchable = normalize(content);
+    const overviewBonus = PRODUCT_OVERVIEW_PATTERN.test(normalizedQuestion) && guide.slug === "what-is-kora" ? 20 : 0;
     const score = queryTerms.reduce((total, term) => {
       if (title.includes(term)) return total + 6;
       if (headings.includes(term)) return total + 3;
       if (searchable.includes(term)) return total + 1;
       return total;
-    }, normalizedQuestion && searchable.includes(normalizedQuestion) ? 8 : 0);
+    }, (normalizedQuestion && searchable.includes(normalizedQuestion) ? 8 : 0) + overviewBonus);
     return { guide, content, score };
   }).sort((a, b) => b.score - a.score || a.guide.title.localeCompare(b.guide.title));
 
@@ -144,6 +147,23 @@ export function retrieveKoraGuides(question: string, limit = 4): KoraGuideCandid
     content: item.content,
     score: item.score,
   }));
+}
+
+export function buildKoraProductFallback(guides: KoraGuideCandidate[]) {
+  const sources = guides.slice(0, Math.min(2, guides.length));
+  const primary = sources[0];
+  if (!primary) {
+    return {
+      answer: "Kora product guidance is temporarily unavailable. Please open Documentation from the Help menu and try again shortly.",
+      sources: [],
+    };
+  }
+
+  const guideLinks = sources.map((guide, index) => `- [${index + 1}. ${guide.title}](/documentation/${guide.slug})`).join("\n");
+  return {
+    answer: `${primary.summary}\n\n${primary.content.includes(primary.summary) ? primary.content.split("\n").find((line) => line && line !== primary.title && line !== primary.summary) ?? "" : ""}\n\n**Kora guides**\n${guideLinks}`.replace(/\n{3,}/g, "\n\n").trim(),
+    sources,
+  };
 }
 
 export function buildKoraProductPrompt(question: string, guides: KoraGuideCandidate[], context: AssistantConversationMessage[] = []) {

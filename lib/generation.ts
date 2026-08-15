@@ -42,7 +42,12 @@ function parseJsonObject(text: string): Record<string, unknown> {
   if (start < 0 || end < start) {
     throw new Error("generation_invalid_json");
   }
-  const parsed = JSON.parse(candidate.slice(start, end + 1)) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate.slice(start, end + 1)) as unknown;
+  } catch {
+    throw new Error("generation_invalid_json");
+  }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("generation_invalid_json");
   }

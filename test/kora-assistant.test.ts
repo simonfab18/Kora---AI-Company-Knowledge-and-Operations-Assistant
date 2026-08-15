@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildKoraProductPrompt,
+  buildKoraProductFallback,
   classifyAssistantLane,
   conversationalReply,
   formatKoraProductAnswer,
@@ -45,6 +46,11 @@ describe("Kora product knowledge", () => {
     expect(guides.some((guide) => guide.slug === "troubleshoot-notion-sync" || guide.slug === "sync-and-index-knowledge")).toBe(true);
   });
 
+  it("prioritizes the Kora overview guide for product identity questions", () => {
+    const guides = retrieveKoraGuides("What is this Kora about?");
+    expect(guides[0]?.slug).toBe("what-is-kora");
+  });
+
   it("builds a product prompt with explicit source boundaries", () => {
     const prompt = buildKoraProductPrompt("How do I connect Notion?", retrieveKoraGuides("connect Notion"));
     expect(prompt).toContain("Kora's product guide");
@@ -80,5 +86,12 @@ describe("Kora product knowledge", () => {
   it("returns a natural greeting instead of an insufficient-context message", () => {
     expect(conversationalReply("hello")).toMatch(/I'm Kora/i);
     expect(conversationalReply("hello")).not.toMatch(/reliable answer|knowledge gap/i);
+  });
+
+  it("builds a useful documentation fallback when generation is unavailable", () => {
+    const guides = retrieveKoraGuides("What is this Kora about?");
+    const fallback = buildKoraProductFallback(guides);
+    expect(fallback.answer).toContain("approved Notion pages");
+    expect(fallback.answer).toContain("/documentation/what-is-kora");
   });
 });
