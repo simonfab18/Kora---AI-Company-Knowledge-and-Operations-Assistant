@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicDocumentationGuides } from "@/lib/public-documentation-guides";
+import { koraDocumentationGuides } from "@/lib/kora-documentation-corpus";
 import { publicNavigation, publicRoutes } from "@/lib/public-site";
 
 describe("public website expansion", () => {
@@ -13,7 +13,7 @@ describe("public website expansion", () => {
   });
 
   it("keeps guide slugs unique and covers critical operations", () => {
-    const slugs = publicDocumentationGuides.map((guide) => guide.slug);
+    const slugs = koraDocumentationGuides.map((guide) => guide.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
     expect(slugs).toEqual(expect.arrayContaining([
       "getting-started-with-kora", "connect-notion-step-by-step", "sync-and-index-knowledge",

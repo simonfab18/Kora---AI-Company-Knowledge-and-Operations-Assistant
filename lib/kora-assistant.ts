@@ -1,5 +1,5 @@
 import type { GroundedGeneration } from "@/lib/generation";
-import { publicDocumentationGuides } from "@/lib/public-documentation-guides";
+import { searchKoraDocumentation } from "@/lib/kora-documentation-corpus";
 
 export type AssistantLane = "workspace_knowledge" | "product_help" | "conversation";
 
@@ -21,11 +21,6 @@ export type KoraGuideCandidate = {
 const PRODUCT_PROVIDER = "kora_product_help";
 const CONVERSATION_PROVIDER = "kora_conversation";
 export const KORA_PRODUCT_PROMPT_VERSION = "kora-product-help-v1";
-
-const STOP_WORDS = new Set([
-  "a", "about", "an", "and", "are", "can", "could", "do", "does", "for", "from", "how", "i", "in", "is", "it", "me", "my",
-  "of", "on", "or", "please", "should", "that", "the", "this", "to", "what", "when", "where", "which", "who", "why", "with", "would", "you", "your",
-]);
 
 const PRODUCT_QUERY_PATTERNS = [
   /\bkora\b/,
@@ -62,31 +57,8 @@ const CONVERSATION_PATTERNS = [
   /^(?:what is your name|are you (?:an?\s+)?ai|can we chat|help me)[?.! ]*$/,
 ];
 
-const PRODUCT_OVERVIEW_PATTERN = /\b(?:what is|what does|tell me about)\s+(?:this\s+)?kora\b|\bwhat\s+is\s+kora\s+about\b/;
-
-const QUERY_EXPANSIONS: Record<string, string[]> = {
-  account: ["signup", "login", "profile", "password"],
-  answer: ["ask", "citations", "confidence", "sources"],
-  citation: ["source", "evidence", "answer"],
-  connect: ["notion", "oauth", "integration", "setup"],
-  document: ["knowledge", "notion", "indexed", "chunks"],
-  invite: ["members", "roles", "access"],
-  member: ["invite", "roles", "access", "organization"],
-  notion: ["connect", "oauth", "sync", "pages"],
-  organization: ["workspace", "owner", "members", "switch"],
-  setup: ["getting", "started", "connect", "sync"],
-  source: ["citation", "notion", "document"],
-  sync: ["notion", "index", "documents", "activity"],
-  usage: ["quota", "limits", "questions"],
-};
-
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function terms(value: string) {
-  const base = normalize(value).split(" ").filter((term) => term.length > 2 && !STOP_WORDS.has(term));
-  return Array.from(new Set(base.flatMap((term) => [term, ...(QUERY_EXPANSIONS[term] ?? [])])));
 }
 
 function followsProductHelp(context: AssistantConversationMessage[]) {
@@ -106,40 +78,8 @@ export function classifyAssistantLane(question: string, context: AssistantConver
   return "workspace_knowledge";
 }
 
-function guideSearchText(guide: (typeof publicDocumentationGuides)[number]) {
-  return [
-    guide.title,
-    guide.summary,
-    guide.hero,
-    ...guide.sections.flatMap((section) => [section.heading, ...section.body]),
-  ].join("\n");
-}
-
 export function retrieveKoraGuides(question: string, limit = 4): KoraGuideCandidate[] {
-  const queryTerms = terms(question);
-  const normalizedQuestion = normalize(question);
-  const ranked = publicDocumentationGuides.map((guide) => {
-    const title = normalize(guide.title);
-    const headings = normalize(guide.sections.map((section) => section.heading).join(" "));
-    const content = guideSearchText(guide);
-    const searchable = normalize(content);
-    const overviewBonus = PRODUCT_OVERVIEW_PATTERN.test(normalizedQuestion) && guide.slug === "what-is-kora" ? 20 : 0;
-    const score = queryTerms.reduce((total, term) => {
-      if (title.includes(term)) return total + 6;
-      if (headings.includes(term)) return total + 3;
-      if (searchable.includes(term)) return total + 1;
-      return total;
-    }, (normalizedQuestion && searchable.includes(normalizedQuestion) ? 8 : 0) + overviewBonus);
-    return { guide, content, score };
-  }).sort((a, b) => b.score - a.score || a.guide.title.localeCompare(b.guide.title));
-
-  const selected = ranked.filter((item) => item.score > 0).slice(0, limit);
-  if (selected.length === 0) {
-    const defaults = ["getting-started-with-kora", "ask-ai-and-read-citations"];
-    selected.push(...ranked.filter((item) => defaults.includes(item.guide.slug)));
-  }
-
-  return selected.slice(0, limit).map((item, index) => ({
+  return searchKoraDocumentation(question, limit).map((item, index) => ({
     citationId: `K${index + 1}`,
     slug: item.guide.slug,
     title: item.guide.title,
