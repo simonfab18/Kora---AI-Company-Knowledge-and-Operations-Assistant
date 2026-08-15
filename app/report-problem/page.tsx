@@ -2,6 +2,8 @@ import { submitProblemReportAction } from "@/app/app/utility-actions";
 import { ProblemReportForm } from "@/components/utility-forms";
 import Link from "next/link";
 
+export const metadata = { title: "Report a problem" };
+
 export default async function ReportProblemPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   const { from } = await searchParams;
   const returnToApp = from === "app";

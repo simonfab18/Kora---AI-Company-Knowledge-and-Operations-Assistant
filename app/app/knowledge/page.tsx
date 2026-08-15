@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ExternalLink, FileText, Search, X } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Knowledge" };
+
 const PAGE_SIZE = 10;
 const statusOptions: Array<"all" | DocumentStatus> = ["all", "indexed", "failed", "archived", "pending", "syncing"];
 

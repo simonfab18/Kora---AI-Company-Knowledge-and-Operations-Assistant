@@ -4,6 +4,8 @@ import type { KnowledgeGap, OrganizationInvitation, SyncJob } from "@/lib/databa
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 
+export const metadata = { title: "Notifications" };
+
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Recently";
 }

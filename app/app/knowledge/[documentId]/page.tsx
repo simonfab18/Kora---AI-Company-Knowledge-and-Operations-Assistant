@@ -9,6 +9,8 @@ import { ArrowLeft, Database, ExternalLink, FileText, Hash, Layers3, Quote, Shie
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+export const metadata = { title: "Knowledge document" };
+
 type DocumentDetailPageProps = {
   params: Promise<{ documentId: string }>;
 };

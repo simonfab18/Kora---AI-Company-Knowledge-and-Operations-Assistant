@@ -4,6 +4,8 @@ import { PasswordResetForm } from "@/components/password-reset-form";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "Choose new password" };
+
 export default async function UpdatePasswordPage() {
   const user = await getCurrentUser();
 

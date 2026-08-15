@@ -9,6 +9,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Archive, Bot, CheckCircle2, MessageSquare, Pin, Plus, Search, ThumbsDown, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Conversations" };
+
 const PAGE_SIZE = 30;
 const viewOptions = ["active", "archived", "all"] as const;
 type ConversationView = (typeof viewOptions)[number];

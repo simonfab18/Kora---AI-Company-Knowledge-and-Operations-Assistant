@@ -13,6 +13,8 @@ import { isKoraConversationProvider, isKoraProductProvider } from "@/lib/kora-as
 import { Bot, ChevronDown, ExternalLink, FileText, MessageSquare, User } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Ask AI" };
+
 type AskPageProps = {
   searchParams: Promise<{ conversationId?: string; q?: string }>;
 };

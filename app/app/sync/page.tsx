@@ -9,6 +9,8 @@ import { documentStatusCounts, formatDuration, summarizeSyncJob, syncStatusTone 
 import { AlertTriangle, CheckCircle2, Clock3, Database, FileWarning, Link2, RefreshCw, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Sync activity" };
+
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Not started";
 }

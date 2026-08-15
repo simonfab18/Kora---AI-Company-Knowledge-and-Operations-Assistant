@@ -9,6 +9,8 @@ import { loadInsightsSummary } from "@/lib/organization-summaries";
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Database, FileText, MessageSquareText, Quote, RefreshCw, Sparkles } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Insights" };
+
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Unknown";
 }

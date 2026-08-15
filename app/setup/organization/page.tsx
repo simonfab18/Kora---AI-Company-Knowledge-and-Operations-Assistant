@@ -4,6 +4,8 @@ import { getCurrentUser, listUserOrganizations } from "@/lib/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "Create organization" };
+
 export default async function OrganizationSetupPage() {
   const user = await getCurrentUser();
 

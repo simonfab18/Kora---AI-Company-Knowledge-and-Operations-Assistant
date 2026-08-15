@@ -5,6 +5,8 @@ import { requireOrganizationManager } from "@/lib/authorization";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BookOpen } from "lucide-react";
 
+export const metadata = { title: "Manage collections" };
+
 type CollectionRow = {
   id: string;
   name: string;

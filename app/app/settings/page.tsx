@@ -14,6 +14,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Bot, CheckCircle2, Database, KeyRound, LockKeyhole, Settings2, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: "Settings" };
+
 type SettingsPageProps = {
   searchParams: Promise<{ notion?: string; onboarding?: string }>;
 };

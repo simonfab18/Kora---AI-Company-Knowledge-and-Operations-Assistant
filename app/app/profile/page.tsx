@@ -4,6 +4,8 @@ import { ProfileSettingsForm } from "@/components/utility-forms";
 import { requireActiveOrganization } from "@/lib/authorization";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const metadata = { title: "Profile" };
+
 type ProfileSettings = {
   full_name: string | null;
   display_name: string | null;
