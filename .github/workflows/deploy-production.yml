@@ -67,6 +67,10 @@ jobs:
               exit 1
             fi
           done
+          if [[ "${PRODUCTION_SITE_URL}" != https://* || "${PRODUCTION_SITE_URL}" == *localhost* ]]; then
+            echo "PRODUCTION_SITE_URL must be the deployed HTTPS URL, not localhost." >&2
+            exit 1
+          fi
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -149,6 +153,7 @@ jobs:
       - name: Build frontend deployment
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ env.KORA_API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.PRODUCTION_SITE_URL }}
         run: npx --yes vercel@58.9.0 build --prod --scope="${VERCEL_SCOPE}" --token="${VERCEL_TOKEN}"
 
       - name: Deploy frontend to Vercel

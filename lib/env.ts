@@ -23,6 +23,7 @@ function checkRequired(env: EnvironmentMap, name: string, message: string): Envi
 }
 
 export function validateProductionEnvironment(env: EnvironmentMap = process.env): EnvironmentCheck[] {
+  const appEnv = env.APP_ENV;
   const checks: EnvironmentCheck[] = [
     ...FRONTEND_REQUIRED.map((name) => checkRequired(env, name, "Required for browser Supabase access.")),
     ...SERVER_REQUIRED.map((name) => checkRequired(env, name, "Required for server-side database and encrypted token access.")),
@@ -37,13 +38,15 @@ export function validateProductionEnvironment(env: EnvironmentMap = process.env)
   });
 
   const siteUrl = env.NEXT_PUBLIC_SITE_URL;
+  const validSiteUrl = appEnv === "production"
+    ? siteUrl?.startsWith("https://") && !siteUrl.includes("localhost")
+    : siteUrl?.startsWith("https://") || siteUrl?.startsWith("http://localhost");
   checks.push({
     name: "NEXT_PUBLIC_SITE_URL",
-    status: siteUrl?.startsWith("https://") || siteUrl?.startsWith("http://localhost") ? "ok" : "warning",
+    status: validSiteUrl ? "ok" : "warning",
     message: "Use the deployed HTTPS URL in production so auth and Notion redirects match.",
   });
 
-  const appEnv = env.APP_ENV;
   checks.push({
     name: "APP_ENV",
     status: appEnv === "production" ? "ok" : "warning",
